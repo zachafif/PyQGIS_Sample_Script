@@ -1,0 +1,45 @@
+from osgeo import gdal
+import time
+import processing
+import glob
+
+start_time = time.time()
+
+gdal.UseExceptions()
+
+parent = iface.mainWindow()
+
+dir=QInputDialog.getText(None,"File Directory","Enter File Directory")
+directory="COG"
+parent_dir=dir[0]
+path=os.path.join(parent_dir,directory)
+os.mkdir(path)
+os.chdir(parent_dir)
+
+print("Starting Process...")
+
+fns=[]
+
+for rstr in glob.glob("*Tif"):
+        translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-of GTIFF -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=JPEG -co BIGTIFF=YES"))
+        inpth=parent_dir+"\\"+rstr
+        src_ds = gdal.Open((inpth))
+        outpth=inpth.replace(parent_dir,path)
+        gdal.Translate(outpth,src_ds,options=translate_options)
+        fns.append(outpth)
+
+directory_2="Mosaic"
+path_2=os.path.join(parent_dir,directory_2)
+os.mkdir(path_2)
+
+mo_out=path_2+"\\"+"mosaic.Tif"
+vrt=mo_out.replace(".Tif",".vrt")
+gdal.BuildVRT(vrt,fns)
+gdal.Translate(mo_out,vrt,options=translate_options)
+
+seconds = time.time() - start_time
+print('Time Taken:', time.strftime("%H:%M:%S",time.gmtime(seconds)))
+
+QMessageBox.information(parent, "Success", "Succesfully Processed!!!")
+print("Success!")   ly Processed!!!")
+print("Success!")
