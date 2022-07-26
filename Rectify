@@ -1,0 +1,48 @@
+from osgeo import gdal
+import time
+import processing
+import csv
+import os
+
+start_time = time.time()
+
+gdal.UseExceptions()
+
+parent = iface.mainWindow()
+
+#Import Files
+inp,inpOk=QFileDialog.getOpenFileName(parent,"Files to open", QgsProject.instance().homePath(),"GeoTIFF(*.Tif)")
+outp,outpOK=QFileDialog.getSaveFileName(parent,"Rectified Directory", QgsProject.instance().homePath(),"GeoTIFF(*.Tif)")
+fgcp,fgcpOk=QFileDialog.getOpenFileName(parent,"Input GCP", QgsProject.instance().homePath(),"Comma Delimited Text(*.csv)")
+print("Starting Process...")
+
+#Parse GCP Point
+pts=[]
+
+with open(fgcp, 'r',encoding='utf-8',errors='ignore') as read_obj:
+     csv_reader= csv.reader(read_obj, delimiter=',')
+     for row in csv_reader:
+        rowe='-gcp'+' '+row[0]+' '+row[1]+' '+row[2]+' '+row[3]
+        pts.append(rowe)
+gcp=' '.join(pts)
+
+#Rectification
+outpath_1=outp.replace(".Tif",".vrt")
+outpath_2=outp.replace(".Tif","_mod.vrt")
+translate_options_1 = gdal.TranslateOptions(gdal.ParseCommandLine('-of VRT'+' '+gcp))
+gdal.Translate(outpath_1,inp,options=translate_options_1)
+warp_options = gdal.WarpOptions(gdal.ParseCommandLine("-r near -order 2 -co COMPRESS=NONE"))
+gdal.Warp(outpath_2,outpath_1,options=warp_options)
+translate_options_2= gdal.TranslateOptions(gdal.ParseCommandLine("-of GTIFF -co TILED=YES -co COPY_SRC_OVERVIEWS=YES -co COMPRESS=JPEG -co BIGTIFF=YES"))
+gdal.Translate(outp,outpath_2,options=translate_options_2)
+
+os.remove(outpath_1)
+os.remove(outpath_2)
+
+print("Successfully Rectified!")
+
+seconds = time.time() - start_time
+print('Time Taken:', time.strftime("%H:%M:%S",time.gmtime(seconds)))
+
+QMessageBox.information(parent, "Success", "Succesfully Processed!!!")
+arent, "Success", "Succesfully Processed!!!")
