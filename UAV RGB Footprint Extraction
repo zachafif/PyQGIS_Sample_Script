@@ -1,0 +1,64 @@
+from osgeo import gdal
+import time
+import processing
+import csv
+
+
+start_time = time.time()
+
+gdal.UseExceptions()
+
+parent = iface.mainWindow()
+
+inp,inpOk=QFileDialog.getOpenFileName(parent,"Raster file to make footprint", QgsProject.instance().homePath(),"GeoTIFF(*.Tif)")
+outp,outpOK=QFileDialog.getSaveFileName(parent,"Save Footprint to", QgsProject.instance().homePath(),"Shape Files (*.shp)")
+out_path=inp.replace(".Tif",".vrt")
+
+print("Starting Footprint Extraction on..."+inp) 
+
+translate_options = gdal.TranslateOptions(gdal.ParseCommandLine("-of VRT -tr 0.5 0.5"))
+gdal.Translate(out_path,inp,options=translate_options)
+
+out_se=outp.replace(".shp","_se.shp")
+out_p=outp.replace(".shp","_pgn.shp")
+out_sm=outp.replace(".shp","_smo.shp")
+
+# Polygonize (raster to vector)
+alg_params_p= {
+    'BAND': 4,
+    'EIGHT_CONNECTEDNESS': True,
+    'EXTRA': '',
+    'FIELD': 'DN',
+    'INPUT': out_path,
+    'OUTPUT': out_p
+    }
+processing.run('gdal:polygonize', alg_params_p)
+
+#Select
+shpin=QgsVectorLayer(out_p,"Vector Layer", "ogr")
+q="\"DN\" =255"
+shpin.selectByExpression(q,QgsVectorLayer.SetSelection)
+options = QgsVectorFileWriter.SaveVectorOptions()
+options.driverName = "ESRI Shapefile"
+options.onlySelectedFeatures=True
+QgsVectorFileWriter.writeAsVectorFormatV2(shpin,out_se,QgsCoordinateTransformContext(),options)
+
+# Simplify
+alg_params = {
+    'INPUT': out_se,
+    'METHOD': 0,  # Distance (Douglas-Peucker)
+    'TOLERANCE': 1,
+    'OUTPUT': outp
+    }
+processing.run('native:simplifygeometries', alg_params)
+
+
+QgsVectorFileWriter.deleteShapeFile(out_p)
+QgsVectorFileWriter.deleteShapeFile(out_se)
+
+seconds = time.time() - start_time
+print('Time Taken:', time.strftime("%H:%M:%S",time.gmtime(seconds)))
+
+QMessageBox.information(parent, "Success", "Succesfully Processed!!!")
+print("Success!")   , "Success", "Succesfully Processed!!!")
+print("Success!")   
